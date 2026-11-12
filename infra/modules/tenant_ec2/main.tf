@@ -1,6 +1,6 @@
 resource "aws_security_group" "tenant_sg" {
   name        = "sg_${var.tenant_id}"
-  description = "Security Group para el tenant ${var.tenant_name}"
+  description = "Security Group para el tenant de ${var.tenant_id}"
 
   ingress {
     from_port   = 22
