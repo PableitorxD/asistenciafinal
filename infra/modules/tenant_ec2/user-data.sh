@@ -1,20 +1,17 @@
 #!/bin/bash
-# Actualizar sistema e instalar Node.js, npm y Git
 apt-get update -y
-apt-get install -y nodejs npm git
+apt-get install -y curl git build-essential
 
-# Crear directorio de trabajo en la máquina virtual
+# Instalar Node.js 20 LTS en lugar del Node 12 de Ubuntu
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+
 mkdir -p /app
 cd /app
 
-# Clonar repositorio desde GitHub
 git clone https://github.com/PableitorxD/asistenciafinal.git .
-
-# Entrar a la carpeta 'backend' donde están el package.json y el server.js
 cd backend
 
-# Instalar dependencias de Node.js
 npm install
-
-# Iniciar la aplicación en segundo plano usando nohup para que quede corriendo en el puerto 3000
+node data/init_db.js
 nohup node server.js > app.log 2>&1 &
