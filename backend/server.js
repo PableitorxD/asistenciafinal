@@ -17,8 +17,8 @@ const CFG = {
   adminKey: process.env.ADMIN_KEY || 'admin123',
   tz: process.env.TZ_APP || 'America/La_Paz',
   validarHorario: String(process.env.VALIDAR_HORARIO).toLowerCase() === 'true',
-  tolerancia: Number(process.env.TOLERANCIA_MIN ?? 15),
-  anticipo: Number(process.env.ANTICIPO_MIN ?? 30),
+  tolerancia: Number(process.env.TOLERANCIA_MIN || 15),
+  anticipo: Number(process.env.ANTICIPO_MIN || 30),
   frontendDir: path.resolve(__dirname, process.env.FRONTEND_DIR || '../frontend'),
 };
 
@@ -43,12 +43,12 @@ const ah = (fn) => (req, res) => fn(req, res).catch((e) => { console.error(e); r
 async function initDB() {
   await run(`CREATE TABLE IF NOT EXISTS modulos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, activo INTEGER DEFAULT 1)`);
   await run(`CREATE TABLE IF NOT EXISTS estudiantes (registro TEXT, nombre TEXT, correo TEXT, modulo_id INTEGER, PRIMARY KEY (registro, modulo_id))`);
-  await run(`CREATE TABLE IF NOT EXISTS fechas_clase (fecha TEXT, hora_initDBcio TEXT, hora_fin TEXT, modulo_id INTEGER, PRIMARY KEY (fecha, modulo_id))`);
+  await run(`CREATE TABLE IF NOT EXISTS fechas_clase (fecha TEXT, hora_inicio TEXT, hora_fin TEXT, modulo_id INTEGER, PRIMARY KEY (fecha, modulo_id))`);
   await run(`CREATE TABLE IF NOT EXISTS asistencias (id INTEGER PRIMARY KEY AUTOINCREMENT, registro TEXT, fecha TEXT, hora_marca TEXT, estado TEXT, modulo_id INTEGER)`);
   await run(`CREATE TABLE IF NOT EXISTS auditoria (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario TEXT, accion TEXT, fecha TEXT, hora TEXT, registro_afectado TEXT)`);
   try { await run(`CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencia ON asistencias(registro, fecha, modulo_id)`); } catch (_) { /* ya había duplicados */ }
   if (!(await get(`SELECT id FROM modulos WHERE activo = 1`))) {
-    await run(`INSERT INTO modulos (nombre, activo) VALUES ('Módulo initDBcial', 1)`);
+    await run(`INSERT INTO modulos (nombre, activo) VALUES ('Módulo Inicial', 1)`);
   }
 }
 
@@ -81,13 +81,13 @@ function estadoCelda(f, marca, t) {
 async function matriz(modId) {
   const t = ahora();
   const rows = await all(
-    `SELECT e.registro, e.nombre, f.fecha, f.hora_initDBcio, f.hora_fin, a.hora_marca, a.estado AS marca
+    `SELECT e.registro, e.nombre, f.fecha, f.hora_inicio, f.hora_fin, a.hora_marca, a.estado AS marca
        FROM estudiantes e
        JOIN fechas_clase f ON f.modulo_id = e.modulo_id
        LEFT JOIN asistencias a ON a.registro = e.registro AND a.fecha = f.fecha AND a.modulo_id = e.modulo_id
       WHERE e.modulo_id = ?`, [modId]);
   return rows.map((r) => ({
-    registro: r.registro, nombre: r.nombre, fecha: r.fecha, hora_initDBcio: r.hora_inicio, hora_fin: r.hora_fin,
+    registro: r.registro, nombre: r.nombre, fecha: r.fecha, hora_inicio: r.hora_inicio, hora_fin: r.hora_fin,
     hora_marca: r.hora_marca || '--:--', estado: estadoCelda(r, r.marca, t),
   })).sort((x, y) => fechaISO(y.fecha).localeCompare(fechaISO(x.fecha)) || x.nombre.localeCompare(y.nombre));
 }
@@ -103,7 +103,14 @@ app.get('/api/modulo-activo', ah(async (req, res) => {
 app.get('/api/clase-hoy', ah(async (req, res) => {
   const m = await moduloActivo(); const t = ahora();
   const c = m && await get(`SELECT * FROM fechas_clase WHERE fecha = ? AND modulo_id = ?`, [t.fecha, m.id]);
-  res.json({ hay_clase: !!c, fecha: t.fecha, hora_servidor: t.hora, hora_inicio: c?.hora_inicio || null, hora_fin: c?.hora_fin || null, validar_horario: CFG.validarHorario });
+  res.json({
+    hay_clase: !!c,
+    fecha: t.fecha,
+    hora_servidor: t.hora,
+    hora_inicio: (c && c.hora_inicio) || null,
+    hora_fin: (c && c.hora_fin) || null,
+    validar_horario: CFG.validarHorario
+  });
 }));
 
 // RF-01 Ingreso de estudiantes
@@ -157,7 +164,8 @@ app.get('/api/historial/:registro', ah(async (req, res) => {
 // ---------- Administrador ----------
 const tokens = new Map(); // token -> expira
 app.post('/api/admin/login', (req, res) => {
-  const a = Buffer.from(String(req.body.clave || '')), b = Buffer.from(CFG.adminKey);
+  const clave = req.body && req.body.clave ? req.body.clave : '';
+  const a = Buffer.from(String(clave)), b = Buffer.from(CFG.adminKey);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(401).json({ error: 'Contraseña incorrecta' });
   const token = crypto.randomBytes(24).toString('hex');
   tokens.set(token, Date.now() + 8 * 3600 * 1000);
@@ -181,10 +189,18 @@ app.get('/api/admin/estudiantes', ah(async (req, res) => {
   const m = await moduloActivo(); if (!m) return res.json([]);
   const est = await all(`SELECT registro, nombre, correo FROM estudiantes WHERE modulo_id = ? ORDER BY nombre`, [m.id]);
   const mx = await matriz(m.id); const por = {};
-  for (const r of mx) { const o = (por[r.registro] ||= { P: 0, A: 0, F: 0, T: 0 });
-    if (r.estado === 'PUNTUAL') o.P++; else if (r.estado === 'ATRASO') o.A++; else if (r.estado === 'FALTA') o.F++; if (r.estado !== 'PENDIENTE') o.T++; }
-  res.json(est.map((e) => { const o = por[e.registro] || { P: 0, A: 0, F: 0, T: 0 };
-    return { ...e, puntuales: o.P, atrasos: o.A, faltas: o.F, porcentaje: o.T ? Math.round(((o.P + o.A) / o.T) * 100) : null }; }));
+  for (const r of mx) {
+    if (!por[r.registro]) por[r.registro] = { P: 0, A: 0, F: 0, T: 0 };
+    const o = por[r.registro];
+    if (r.estado === 'PUNTUAL') o.P++;
+    else if (r.estado === 'ATRASO') o.A++;
+    else if (r.estado === 'FALTA') o.F++;
+    if (r.estado !== 'PENDIENTE') o.T++;
+  }
+  res.json(est.map((e) => {
+    const o = por[e.registro] || { P: 0, A: 0, F: 0, T: 0 };
+    return { ...e, puntuales: o.P, atrasos: o.A, faltas: o.F, porcentaje: o.T ? Math.round(((o.P + o.A) / o.T) * 100) : null };
+  }));
 }));
 
 app.get('/api/admin/fechas', ah(async (req, res) => {
@@ -194,7 +210,11 @@ app.get('/api/admin/fechas', ah(async (req, res) => {
   const cuenta = await all(`SELECT fecha, estado, COUNT(*) n FROM asistencias WHERE modulo_id = ? GROUP BY fecha, estado`, [m.id]);
   const total = (await get(`SELECT COUNT(*) n FROM estudiantes WHERE modulo_id = ?`, [m.id])).n;
   res.json(fechas.sort((a, b) => fechaISO(a.fecha).localeCompare(fechaISO(b.fecha))).map((f) => {
-    const c = cuenta.filter((x) => x.fecha === f.fecha); const n = (e) => c.find((x) => x.estado === e)?.n || 0;
+    const c = cuenta.filter((x) => x.fecha === f.fecha);
+    const n = (e) => {
+      const item = c.find((x) => x.estado === e);
+      return item ? item.n : 0;
+    };
     const a = fechaISO(f.fecha), h = fechaISO(t.fecha);
     return { ...f, situacion: a < h ? 'PASADA' : a > h ? 'PROXIMA' : 'HOY', puntuales: n('PUNTUAL'), atrasos: n('ATRASO'), estudiantes: total };
   }));
@@ -206,13 +226,17 @@ app.get('/api/admin/resumen', ah(async (req, res) => {
   const porEstado = { PUNTUAL: 0, ATRASO: 0, FALTA: 0, PENDIENTE: 0 }; const porFecha = {}; const porEst = {};
   for (const r of mx) {
     porEstado[r.estado]++;
-    const f = (porFecha[r.fecha] ||= { fecha: r.fecha, presentes: 0, ausentes: 0 });
-    if (r.estado === 'PUNTUAL' || r.estado === 'ATRASO') f.presentes++; else if (r.estado === 'FALTA') f.ausentes++;
-    const e = (porEst[r.registro] ||= { registro: r.registro, nombre: r.nombre, faltas: 0 }); if (r.estado === 'FALTA') e.faltas++;
+    if (!porFecha[r.fecha]) porFecha[r.fecha] = { fecha: r.fecha, presentes: 0, ausentes: 0 };
+    const f = porFecha[r.fecha];
+    if (r.estado === 'PUNTUAL' || r.estado === 'ATRASO') f.presentes++;
+    else if (r.estado === 'FALTA') f.ausentes++;
+    if (!porEst[r.registro]) porEst[r.registro] = { registro: r.registro, nombre: r.nombre, faltas: 0 };
+    const e = porEst[r.registro];
+    if (r.estado === 'FALTA') e.faltas++;
   }
   const cont = porEstado.PUNTUAL + porEstado.ATRASO + porEstado.FALTA;
   res.json({
-    modulo: m?.nombre, hoy: t.fecha, hora_servidor: t.hora,
+    modulo: m ? m.nombre : null, hoy: t.fecha, hora_servidor: t.hora,
     estudiantes: m ? (await get(`SELECT COUNT(*) n FROM estudiantes WHERE modulo_id = ?`, [m.id])).n : 0,
     clases: m ? (await get(`SELECT COUNT(*) n FROM fechas_clase WHERE modulo_id = ?`, [m.id])).n : 0,
     porcentaje: cont ? Math.round(((porEstado.PUNTUAL + porEstado.ATRASO) / cont) * 100) : null,
@@ -256,7 +280,7 @@ const COL = {
 };
 
 app.post('/api/admin/importar-estudiantes', ah(async (req, res) => {
-  const fa = req.files?.archivoAlumnos, ff = req.files?.archivoFechas;
+  const fa = req.files && req.files.archivoAlumnos, ff = req.files && req.files.archivoFechas;
   if (!fa || !ff) return res.status(400).json({ error: 'Falta seleccionar alguno de los dos archivos Excel.' });
   const m = await moduloActivo(); if (!m) return res.status(400).json({ error: 'No hay módulo activo' });
   const reemplazar = String(req.body.reemplazar) === 'true';
@@ -273,7 +297,7 @@ app.post('/api/admin/importar-estudiantes', ah(async (req, res) => {
   });
   hojaF.filas.forEach((f, i) => {
     const fe = normalizarFecha(campo(f, COL.fecha)), hi = normalizarHora(campo(f, COL.ini)), hf = normalizarHora(campo(f, COL.fin));
-    if (!fe) return rechFechas.push({ fila: i + 2, motivo: `Fecha no válida: "${campo(f, COL.fecha) ?? ''}"` });
+    if (!fe) return rechFechas.push({ fila: i + 2, motivo: `Fecha no válida: "${campo(f, COL.fecha) || ''}"` });
     if (!hi || !hf) return rechFechas.push({ fila: i + 2, motivo: 'Hora de inicio o fin no válida' });
     fechas.push({ fecha: fe, hi, hf });
   });
