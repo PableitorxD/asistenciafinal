@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asistencia · Ingresar</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="login">
+  <section class="hero">
+    <div class="brand"><div class="logo">A</div><div><b>Asistencia</b><span>Control académico</span></div></div>
+    <div>
+      <h1>Marca tu clase en un toque.</h1>
+      <p>Consulta tu historial, tus atrasos y el calendario completo del módulo desde cualquier dispositivo.</p>
+    </div>
+    <div class="pills">
+      <div class="pill"><b id="h-modulo">…</b><span>Módulo activo</span></div>
+      <div class="pill"><b id="h-hoy">…</b><span>Hoy</span></div>
+      <div class="pill"><b id="h-clase">…</b><span>Clase de hoy</span></div>
+    </div>
+  </section>
+
+  <section class="formside">
+    <div class="formbox">
+      <h2>Ingresar al sistema</h2>
+      <p>Usa tu correo o tu número de registro.</p>
+      <div id="alert-box" class="alert hidden" role="alert"></div>
+      <form id="login-form">
+        <div class="field"><label for="login-input">Usuario</label>
+          <input class="input" id="login-input" autocomplete="username" placeholder="212188964 o ronald@gmail.com" required></div>
+        <button class="btn primary" style="width:100%" id="btn-login">Ingresar</button>
+      </form>
+      <p style="text-align:center;margin-top:22px"><a href="#" id="abrir-admin" class="small">Acceso docente</a></p>
+    </div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script>
+(async () => {
+  try {
+    const [m, c] = await Promise.all([api('/api/modulo-activo'), api('/api/clase-hoy')]);
+    $('#h-modulo').textContent = m.nombre; $('#h-hoy').textContent = c.fecha;
+    $('#h-clase').textContent = c.hay_clase ? `${c.hora_inicio} – ${c.hora_fin}` : 'Sin clase';
+  } catch (e) { $('#h-modulo').textContent = 'Sin conexión'; $('#h-hoy').textContent = '—'; $('#h-clase').textContent = '—'; }
+})();
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); const box = $('#alert-box'); box.classList.add('hidden');
+  const btn = $('#btn-login'); btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const data = await api('/api/login', { method: 'POST', body: { login: $('#login-input').value } });
+    localStorage.setItem('estudiante', JSON.stringify(data.estudiante));
+    location.href = 'dashboard.html';
+  } catch (err) { box.textContent = err.message; box.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Ingresar'; }
+});
+
+$('#abrir-admin').addEventListener('click', async (e) => {
+  e.preventDefault();
+  while (true) {
+    const clave = await dialog({ titulo: 'Acceso docente', texto: 'Ingresa la contraseña de administrador.', input: { type: 'password', placeholder: '••••••••' }, ok: 'Entrar' });
+    if (!clave) return;
+    try {
+      const r = await api('/api/admin/login', { method: 'POST', body: { clave } });
+      sessionStorage.setItem('adminToken', r.token); location.href = 'admin.html'; return;
+    } catch (err) { toast(err.message, 'err'); }
+  }
+});
+</script>
+</body>
+</html>

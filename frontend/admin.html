@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asistencia · Panel docente</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">A</div><div><b>Asistencia</b><span>Panel docente</span></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot"><div class="nav"><button id="nuevo-modulo"></button><button id="logout"></button></div></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><h1 id="titulo">Resumen</h1><p id="modulo">Cargando módulo…</p></div>
+      <div class="clock"><b id="reloj">--:--:--</b><span id="fecha-hoy">&nbsp;</span></div>
+    </header>
+
+    <!-- RESUMEN -->
+    <section data-view="resumen">
+      <div class="grid g4" style="margin-bottom:18px">
+        <div class="card stat hot"><div class="v" id="k-pct">–</div><div class="l">Asistencia del módulo</div></div>
+        <div class="card stat" style="--c:var(--teal)"><div class="v" id="k-est">0</div><div class="l">Estudiantes</div></div>
+        <div class="card stat" style="--c:var(--blue)"><div class="v" id="k-clases">0</div><div class="l">Clases programadas</div></div>
+        <div class="card stat" style="--c:var(--mint)"><div class="v" id="k-hoy">0</div><div class="l">Presentes hoy</div></div>
+      </div>
+      <div class="grid g21">
+        <div class="card"><h3>Asistencia por clase</h3><div class="chart" id="chart"></div></div>
+        <div class="card"><h3>Estado general</h3><div class="donutbox" id="donut"></div></div>
+      </div>
+      <div class="card" style="margin-top:18px"><h3>Estudiantes con más faltas</h3><div id="top"></div></div>
+    </section>
+
+    <!-- ASISTENCIAS -->
+    <section data-view="asistencias" class="hidden">
+      <div class="card">
+        <div class="tools">
+          <input class="input" id="q" placeholder="Buscar por nombre o registro…">
+          <select class="input" id="f-fecha" style="max-width:200px"><option value="">Todas las fechas</option></select>
+          <select class="input" id="f-estado" style="max-width:190px"><option value="">Todos los estados</option><option>PUNTUAL</option><option>ATRASO</option><option>FALTA</option><option>PENDIENTE</option></select>
+        </div>
+        <div class="tablewrap"><table><thead><tr><th>Registro</th><th>Estudiante</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Corregir</th></tr></thead><tbody id="t-asist"></tbody></table></div>
+        <p class="muted small" id="t-asist-n" style="margin-top:10px"></p>
+      </div>
+    </section>
+
+    <!-- ESTUDIANTES -->
+    <section data-view="estudiantes" class="hidden">
+      <div class="card">
+        <div class="tools"><input class="input" id="q2" placeholder="Buscar estudiante…"></div>
+        <div class="tablewrap"><table><thead><tr><th>Registro</th><th>Nombre</th><th>Correo</th><th>Punt.</th><th>Atr.</th><th>Falt.</th><th>Asistencia</th></tr></thead><tbody id="t-est"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- FECHAS -->
+    <section data-view="fechas" class="hidden">
+      <div class="card">
+        <h3>Calendario de clases <small id="n-fechas"></small></h3>
+        <div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Situación</th><th>Presentes</th><th></th></tr></thead><tbody id="t-fechas"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- IMPORTAR -->
+    <section data-view="importar" class="hidden">
+      <div class="grid g2" style="grid-template-columns:1.2fr 1fr">
+        <div class="card">
+          <h3>Importar desde Excel</h3>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <label class="drop" id="d-alumnos"><input type="file" accept=".xlsx,.xls" id="file-alumnos"><b>Estudiantes</b><span class="muted small" id="n-alumnos">Arrastra o haz clic · .xlsx</span></label>
+            <label class="drop" id="d-fechas"><input type="file" accept=".xlsx,.xls" id="file-fechas"><b>Fechas</b><span class="muted small" id="n-fechas-f">Arrastra o haz clic · .xlsx</span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="reemplazar"><span>Reemplazar los datos actuales del módulo (borra estudiantes y fechas anteriores antes de importar).</span></label>
+          <button class="btn primary" id="btn-importar" style="width:100%">Procesar archivos</button>
+          <div id="reporte" class="report hidden" style="margin-top:16px"></div>
+        </div>
+        <div class="card">
+          <h3>Formato esperado</h3>
+          <p class="muted small" style="margin-bottom:10px"><b style="color:var(--text)">Estudiantes</b> — columnas:</p>
+          <div class="chips"><span class="chip">Número de registro</span><span class="chip">Nombre completo</span><span class="chip">Correo electrónico</span></div>
+          <p class="muted small" style="margin:16px 0 10px"><b style="color:var(--text)">Fechas</b> — columnas:</p>
+          <div class="chips"><span class="chip">Fecha</span><span class="chip">Hora inicio</span><span class="chip">Hora fin</span></div>
+          <p class="muted small" style="margin-top:16px">Las fechas pueden venir como <span class="num">05/10/2026</span>, <span class="num">5/10/26</span> o como fecha de Excel; las horas como <span class="num">18:00</span>, <span class="num">18:00:00</span> o <span class="num">6:00 PM</span>. El sistema las normaliza solo.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BITÁCORA -->
+    <section data-view="bitacora" class="hidden">
+      <div class="card"><div class="tablewrap"><table><thead><tr><th>Operador</th><th>Acción</th><th>Fecha</th><th>Hora</th><th>Afectado</th></tr></thead><tbody id="t-bit"></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

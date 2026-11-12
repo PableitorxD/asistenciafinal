@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asistencia · Mi panel</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">A</div><div><b>Asistencia</b><span>Panel del estudiante</span></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="user"><div class="avatar" id="avatar">?</div><div><b id="u-nombre">…</b><span class="muted small" id="u-reg"></span></div></div>
+      <div class="nav"><button id="logout"></button></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><h1 id="saludo">Hola</h1><p id="modulo">Cargando módulo…</p></div>
+      <div class="clock"><b id="reloj">--:--:--</b><span id="fecha-hoy">&nbsp;</span></div>
+    </header>
+
+    <section class="card today" id="inicio">
+      <div><h2 id="t-titulo">Revisando tu clase de hoy…</h2><p id="t-sub"></p></div>
+      <button class="btn primary mark" id="btn-marcar" disabled>Marcar asistencia</button>
+    </section>
+
+    <section class="grid g4" style="margin:18px 0">
+      <div class="card stat" style="--c:var(--mint)"><div class="v" id="c-puntual">0</div><div class="l">Puntuales</div></div>
+      <div class="card stat" style="--c:var(--amber)"><div class="v" id="c-atraso">0</div><div class="l">Atrasos</div></div>
+      <div class="card stat" style="--c:var(--red)"><div class="v" id="c-falta">0</div><div class="l">Faltas</div></div>
+      <div class="card stat hot"><div class="v" id="c-pct">–</div><div class="l">Asistencia total</div></div>
+    </section>
+
+    <section class="grid g2" id="calendario">
+      <div class="card">
+        <div class="cal-head"><button class="btn sm" id="prev">‹</button><b id="mes"></b><button class="btn sm" id="next">›</button></div>
+        <div class="cal" id="cal"></div>
+        <div class="dots"><span><i style="background:var(--mint)"></i>Puntual</span><span><i style="background:var(--amber)"></i>Atraso</span><span><i style="background:var(--red)"></i>Falta</span><span><i style="background:var(--panel2);border:1px dashed var(--muted)"></i>Próxima</span></div>
+      </div>
+      <div class="card"><h3>Resumen del módulo</h3><div class="donutbox" id="donut"></div></div>
+    </section>
+
+    <section class="card" style="margin-top:18px" id="historial">
+      <h3>Historial de clases <small id="h-count"></small></h3>
+      <div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Horario</th><th>Hora marcada</th><th>Estado</th></tr></thead><tbody id="tbody"></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/student.js"></script>
+</body>
+</html>

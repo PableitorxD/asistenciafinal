@@ -1,0 +1,8 @@
+# Terraform y Cloud Cache
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# Binarios y herramientas locales
+herramientas/*.exe
