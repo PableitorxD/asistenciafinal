@@ -392,9 +392,9 @@ app.get('/api/admin/planes', ah(async (req, res) => {
   });
 }));
 
-// ---------- Inicialización del servidor (SIEMPRE AL FINAL) ----------
-initDB().then(() => app.listen(CFG.port, () => {
-  console.log(`Servidor listo en http://localhost:${CFG.port}  (zona horaria: ${CFG.tz})`);
+// ---------- Inicialización del app.listen (SIEMPRE AL FINAL) ----------
+initDB().then(() => app.listen(CFG.port, '0.0.0.0', () => {
+  console.log(`Servidor escuchando en red externa en el puerto ${CFG.port} (zona horaria: ${CFG.tz})`);
   //if (CFG.adminKey === 'admin123') console.warn('AVISO: cambia ADMIN_KEY en el archivo .env');
 })).catch((e) => { console.error('No se pudo iniciar:', e); process.exit(1); });
 
