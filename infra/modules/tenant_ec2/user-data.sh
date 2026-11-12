@@ -1,15 +1,17 @@
 #!/bin/bash
-# Actualizar sistema e instalar Node.js y Git
+# Actualizar sistema e instalar Node.js, npm y Git
 apt-get update -y
 apt-get install -y nodejs npm git
 
-# Crear directorio para la aplicación
+# Crear directorio de trabajo en la máquina virtual
 mkdir -p /app
 cd /app
 
-# Clonar o descargar tu repositorio/código de asistencia
-# (Puedes reemplazar esta URL por la de tu repositorio de GitHub público del proyecto)
-git clone https://github.com/tu-usuario/tu-repo-asistencia.git .
+# Clonar repositorio desde GitHub
+git clone https://github.com/PableitorxD/asistenciafinal.git .
+
+# Entrar a la carpeta 'backend' donde están el package.json y el server.js
+cd backend
 
 # Instalar dependencias de Node.js
 npm install
