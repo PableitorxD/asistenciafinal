@@ -3,27 +3,25 @@ const path = require('path');
 
 /**
  * Función para aprovisionar infraestructura usando Terraform de forma dinámica
- * Usa Workspaces por tenantId para que múltiples tenants coexistan sin pisarse
  */
 function deployTenantInfrastructure(tenantId, tenantName, plan, callback) {
-  // Ruta donde se encuentra la infraestructura principal
   const infraDir = path.join(__dirname, '../../infra');
 
-  // Selecciona o crea un workspace aislado para este tenant, aplica y obtiene la IP pública
-  const tfCommand = `terraform init -input=false && terraform workspace select -or-create ${tenantId} && terraform apply -auto-approve -var="tenant_id=${tenantId}" -var="tenant_name=${tenantName}" -var="plan=${plan}" && terraform output -raw public_ip`;
+  // Ejecuta init, selecciona/crea el workspace del tenant, aplica cambios e imprime todos los outputs
+  const tfCommand = `terraform init -input=false && terraform workspace select -or-create ${tenantId} && terraform apply -auto-approve -var="tenant_id=${tenantId}" -var="tenant_name=${tenantName}" -var="plan=${plan}" && terraform output`;
 
   console.log(`Iniciando despliegue aislado (workspace: ${tenantId})...`);
 
   exec(tfCommand, { cwd: infraDir }, (error, stdout, stderr) => {
     if (error) {
-      console.error(`Error en el aprovisionamiento de ${tenantId}: ${error.message}`);
+      console.error(`Error en el aprovisionamiento de ${tenantId}:`, error.message);
       if (stderr) console.error(stderr);
       return callback(error, null);
     }
 
-    // Extraemos la última línea no vacía (la IP pública limpia)
-    const lineas = stdout.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const ipPublica = lineas.pop();
+    // Buscar cualquier dirección IPv4 válida en la salida final de Terraform
+    const ipMatches = stdout.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g);
+    const ipPublica = ipMatches && ipMatches.length ? ipMatches[ipMatches.length - 1] : 'IP pendiente';
 
     console.log(`Despliegue exitoso para ${tenantId}. IP Obtenida: ${ipPublica}`);
     callback(null, ipPublica);
