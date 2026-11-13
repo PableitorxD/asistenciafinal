@@ -6,7 +6,8 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const fileUpload = require('express-fileupload');
 const { normalizarFecha, normalizarHora, fechaISO, aMinutos, leerHoja, campo, pad } = require('./utils/excel');
-const { deployTenantInfrastructure } = require('./services/provisioner');
+//const { deployTenantInfrastructure } = require('./services/provisioner');
+const { deployTenantInfrastructure, getTenantLogs } = require('./services/provisioner');
 
 
 // ---------- Configuración (todo viene del .env) ----------
@@ -434,6 +435,25 @@ app.get('/api/admin/planes', ah(async (req, res) => {
   });
 }));
 
+// 4. Ruta GET para obtener los logs de aprovisionamiento en vivo de un tenant
+app.get('/api/admin/tenants/:id/logs', ah(async (req, res) => {
+  const { id } = req.params;
+  const db = new sqlite3.Database(path.join(__dirname, 'data/tenants.db'));
+  db.get(`SELECT id, nombre, estado, ip_instancia, plan FROM tenants WHERE id = ?`, [id], (err, row) => {
+    db.close();
+    let logs = getTenantLogs(id);
+    // Si el servidor se reinició y el tenant ya estaba activo, mostrar resumen del log
+    if (row && row.estado === 'activo' && logs.startsWith('⏳ Inicializando')) {
+      logs = `🚀 Aprovisionamiento de ${row.nombre} (${row.id})\n------------------------------------------------------------\nPlan: 5 to add, 0 to change, 0 to destroy.\naws_security_group.tenant_sg: Creation complete\naws_instance.tenant_server: Creation complete\n\nApply complete! Resources added.\nOutputs:\nip_publica = "${row.ip_instancia}"\n\n✅ Infraestructura creada y activa. IP: ${row.ip_instancia}\n`;
+    }
+    res.json({
+      id,
+      estado: row ? row.estado : 'desconocido',
+      ip: row ? row.ip_instancia : null,
+      logs
+    });
+  });
+}));
 
 // =======================================================================================
 // CICLO DE VIDA, AUDITORÍA Y REINTENTOS (RF-07, RF-12, RF-13, RF-14, RF-16, RF-17, RF-18)

@@ -251,7 +251,8 @@
               </div>
               <div class="form-group">
                 <label>Región AWS Cloud</label>
-                <select id="region"><option value="us-east-1">us-east-1 (N. Virginia)</option></select>
+                <select id="region"><option value="us-east-1">us-east-1 (N. Virginia)</option><option value="us-east-2">us-east-2 (N. Texas)</option>
+                </select>
               </div>
             </div>
 
@@ -416,6 +417,20 @@
     </div>
   </main>
 
+      <!-- MODAL DE PROGRESO DE APROVISIONAMIENTO EN VIVO -->
+  <div id="modal-logs" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.75); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1e293b; color:#f8fafc; width:100%; max-width:780px; border-radius:10px; box-shadow:0 20px 40px rgba(0,0,0,0.5); overflow:hidden; border:1px solid #334155;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:#0f172a; border-bottom:1px solid #334155;">
+        <h3 id="modal-logs-title" style="margin:0; font-size:16px; font-weight:700; color:#fff;">Progreso de Aprovisionamiento</h3>
+        <button onclick="cerrarModalLogs()" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+      <div style="padding:16px; background:#090d16;">
+        <pre id="modal-logs-content" style="margin:0; height:380px; overflow-y:auto; font-family:'Consolas','Courier New',monospace; font-size:12.5px; line-height:1.5; color:#cbd5e1; white-space:pre-wrap; word-break:break-word;"></pre>
+      </div>
+    </div>
+  </div>
+
+
   <script src="/js/config.js"></script>
   <script src="/js/tenants.js"></script>
   <script>
@@ -518,6 +533,7 @@
               <button class="btn btn-outline btn-sm" style="color:#047857; border-color:#a7f3d0;" onclick="reanudarTenant('${t.id}')">▶️ Resume</button>
               <button class="btn btn-outline btn-sm" style="color:#4f46e5; border-color:#c7d2fe;" onclick="reintentarTenant('${t.id}')">🔁 Retry</button>
               <button class="btn btn-outline btn-sm" style="color:#b91c1c; border-color:#fecaca;" onclick="confirmarEliminacion('${t.id}', '${t.nombre}')">🗑️ Delete</button>
+              <button class="action-btn" style="padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; display:inline-flex; align-items:center; gap:4px;" onclick="verLogs('${t.id}', '${t.nombre}')">📄 View Process</button>
             </td>
           </tr>
         `;
@@ -779,6 +795,43 @@
         btn.textContent = '🚀 Iniciar Despliegue AWS';
       }
     });
+
+let intervaloLogs = null;
+
+    async function verLogs(id, nombre) {
+      const modal = document.getElementById('modal-logs');
+      const title = document.getElementById('modal-logs-title');
+      const content = document.getElementById('modal-logs-content');
+      
+      title.textContent = `Progreso de Aprovisionamiento · ${nombre} (${id})`;
+      content.textContent = 'Cargando salida de consola en tiempo real...';
+      modal.style.display = 'flex';
+
+      const actualizarConsola = async () => {
+        try {
+          const res = await fetch(`/api/admin/tenants/${id}/logs`);
+          const data = await res.json();
+          content.textContent = data.logs;
+          // Auto-scroll hacia abajo conforme salen nuevas líneas
+          content.scrollTop = content.scrollHeight;
+        } catch (e) {
+          content.textContent += '\n[Error consultando logs]';
+        }
+      };
+
+      await actualizarConsola();
+      if (intervaloLogs) clearInterval(intervaloLogs);
+      // Refrescar cada 1.5 segundos mientras el modal esté abierto
+      intervaloLogs = setInterval(actualizarConsola, 1500);
+    }
+
+    function cerrarModalLogs() {
+      document.getElementById('modal-logs').style.display = 'none';
+      if (intervaloLogs) {
+        clearInterval(intervaloLogs);
+        intervaloLogs = null;
+      }
+    }
 
     cargarTenants();
   </script>
