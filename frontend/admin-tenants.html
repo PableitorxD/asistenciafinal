@@ -430,6 +430,23 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       }
+      
+      // 🧹 LIMPIEZA AUTOMÁTICA DEL FORMULARIO DE CREACIÓN
+      if (vistaId === 'crear') {
+        const form = document.getElementById('form-crear-tenant');
+        if (form) form.reset();
+        const msg = document.getElementById('msg');
+        if (msg) msg.textContent = '';
+        const slugInput = document.getElementById('id');
+        if (slugInput) slugInput.value = '';
+        const planInput = document.getElementById('plan');
+        if (planInput) planInput.value = 'basico';
+        document.querySelectorAll('#view-crear .plan-card').forEach((c, index) => {
+          if (index === 0) c.classList.add('selected');
+          else c.classList.remove('selected');
+        });
+      }
+
       if (vistaId === 'tenants' || vistaId === 'inicio') cargarTenants();
       if (vistaId === 'auditoria') cargarAuditoria();
       if (vistaId === 'monitoreo') cargarMonitoreo();
